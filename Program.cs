@@ -161,39 +161,73 @@ namespace SteamIdChecker
 		{
 			try
 			{
-				// 尝试从注册表获取Steam信息
-				using (RegistryKey key = Registry.CurrentUser.OpenSubKey(@"Software\Valve\Steam"))
+				// 检查是否为Windows平台，因为注册表访问只在Windows上可用
+				if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
 				{
+					// 尝试从注册表获取Steam信息
+					RegistryKey? key = Registry.CurrentUser.OpenSubKey(@"Software\Valve\Steam");
+					
 					if (key != null)
 					{
-						object steamPath = key.GetValue("SteamPath");
-						object activeUser = key.GetValue("ActiveUser");
-
-						if (steamPath != null)
+						using (key)
 						{
-							Console.WriteLine($"Steam路径: {steamPath}");
-						}
-
-						if (activeUser != null)
-						{
-							Console.WriteLine($"当前活跃用户ID: {activeUser}");
-
-							// 尝试获取用户信息
-							string loginUsersPath = Path.Combine(steamPath?.ToString() ?? "", "config", "loginusers.vdf");
-							if (File.Exists(loginUsersPath))
+							object? steamPath = key.GetValue("SteamPath");
+							object? activeUser = key.GetValue("ActiveUser");
+	
+							if (steamPath != null)
 							{
-								Console.WriteLine($"找到登录用户文件: {loginUsersPath}");
-								// 这里可以添加解析VDF文件的代码来获取更多信息
+								Console.WriteLine($"Steam路径: {steamPath}");
 							}
-						}
-						else
-						{
-							Console.WriteLine("未找到活跃用户信息");
+	
+							if (activeUser != null)
+							{
+								Console.WriteLine($"当前活跃用户ID: {activeUser}");
+	
+								// 尝试获取用户信息
+								string loginUsersPath = Path.Combine(steamPath?.ToString() ?? "", "config", "loginusers.vdf");
+								if (File.Exists(loginUsersPath))
+								{
+									Console.WriteLine($"找到登录用户文件: {loginUsersPath}");
+									// 这里可以添加解析VDF文件的代码来获取更多信息
+								}
+							}
+							else
+							{
+								Console.WriteLine("未找到活跃用户信息");
+							}
 						}
 					}
 					else
 					{
 						Console.WriteLine("未找到Steam注册表项");
+					}
+				}
+				else
+				{
+					// 非Windows平台的处理
+					Console.WriteLine("非Windows平台，不支持注册表访问");
+					Console.WriteLine("尝试从常见路径查找Steam安装...");
+					
+					string steamPath = GetSteamInstallationPath();
+					if (!string.IsNullOrEmpty(steamPath))
+					{
+						Console.WriteLine($"找到Steam安装路径: {steamPath}");
+						
+						// 尝试查找登录用户文件
+						string loginUsersPath = Path.Combine(steamPath, "config", "loginusers.vdf");
+						if (File.Exists(loginUsersPath))
+						{
+							Console.WriteLine($"找到登录用户文件: {loginUsersPath}");
+							// 这里可以添加解析VDF文件的代码来获取更多信息
+						}
+						else
+						{
+							Console.WriteLine("未找到登录用户文件");
+						}
+					}
+					else
+					{
+						Console.WriteLine("未找到Steam安装路径");
 					}
 				}
 			}
@@ -247,14 +281,44 @@ namespace SteamIdChecker
 		{
 			try
 			{
-				// 从注册表获取Steam安装路径
-				using (RegistryKey key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Wow6432Node\Valve\Steam") ??
-											Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Valve\Steam"))
+				// 检查是否为Windows平台，因为注册表访问只在Windows上可用
+				if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
 				{
+					// 从注册表获取Steam安装路径
+					RegistryKey? key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Wow6432Node\Valve\Steam") ??
+										Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Valve\Steam");
+					
 					if (key != null)
 					{
-						object installPath = key.GetValue("InstallPath");
-						return installPath?.ToString();
+						using (key)
+						{
+							object? installPath = key.GetValue("InstallPath");
+							return installPath?.ToString();
+						}
+					}
+				}
+				else
+				{
+					// 非Windows平台的处理
+					Console.WriteLine("非Windows平台，不支持注册表访问");
+					
+					// 尝试常见的Steam安装路径
+					string[] commonPaths =
+					{
+						Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Steam"),
+						Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "Steam"),
+						Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".steam", "steam"),
+						"/usr/local/bin/steam",
+						"/usr/bin/steam",
+						"/opt/steam"
+					};
+					
+					foreach (string path in commonPaths)
+					{
+						if (Directory.Exists(path))
+						{
+							return path;
+						}
 					}
 				}
 			}
@@ -262,7 +326,7 @@ namespace SteamIdChecker
 			{
 				Console.WriteLine($"获取Steam安装路径时发生错误: {ex.Message}");
 			}
-
+	
 			return null;
 		}
 
