@@ -290,8 +290,8 @@ namespace SteamIdChecker
 				if (!File.Exists(appIdPath))
 				{
 					// 使用Spacewar的AppID (480)，这是Steam为开发者提供的测试AppID
-					File.WriteAllText(appIdPath, "480");
-					Console.WriteLine($"已创建steam_appid.txt文件，AppID: 480");
+					File.WriteAllText(appIdPath, "730"); // Game: CS2
+					Console.WriteLine($"已创建steam_appid.txt文件，AppID: 730");
 				}
 			}
 			catch (Exception ex)
